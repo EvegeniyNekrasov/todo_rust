@@ -1,1 +1,1 @@
-# todo_rust
+Just a todo cli app
