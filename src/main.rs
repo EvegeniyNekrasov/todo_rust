@@ -1,11 +1,10 @@
 use csv::WriterBuilder;
 use serde::Deserialize;
 use std::{
+    collections::linked_list,
     error::Error,
-    fs::File,
-    fs::OpenOptions,
-    io,
-    io::{Read, Seek, SeekFrom, Write},
+    fs::{File, OpenOptions},
+    io::{self, Read, Seek, SeekFrom, Write},
 };
 
 const FILE_NAME: &str = "./src/todos.csv";
@@ -119,9 +118,65 @@ fn print_todos() {
     }
 }
 
-fn main() {
-    let mut lista_todos: Vec<Todo> = vec![];
+fn delete_todo() {
+    let lista_todos = match read_csv() {
+        Ok(todos) => todos,
+        Err(e) => {
+            println!("Error leyendo CSV , {}", e);
+            Vec::new()
+        }
+    };
 
+    if lista_todos.len() == 0 {
+        println!("There is no todos to delete");
+        return;
+    }
+
+    println!("Insert to delete ID");
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).expect("Invalid id");
+    let id_tod_delete: i64 = match input.trim().parse() {
+        Ok(id) => id,
+        Err(_) => {
+            println!("Invalid ID");
+            return;
+        }
+    };
+
+    let original_len = lista_todos.len();
+    let filtered_list: Vec<_> = lista_todos
+        .into_iter()
+        .filter(|todo| todo.id != id_tod_delete)
+        .collect();
+
+    if filtered_list.len() == original_len {
+        println!("Todo width id {} not found", id_tod_delete);
+        return;
+    }
+
+    let file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(FILE_NAME)
+        .expect("Could not open CSV");
+
+    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(file);
+
+    wtr.write_record(&["id", "title", "finished"])
+        .expect("Could not write heder");
+
+    for todo in filtered_list {
+        wtr.write_record(&[todo.id.to_string(), todo.title, todo.finished.to_string()])
+            .expect("Could no save write todo");
+    }
+
+    wtr.flush().expect("Could not save CSV");
+    println!("Todo deleted");
+}
+
+fn main() {
     println!("Welcome to rust todo!");
     println!("What you want todo:");
 
@@ -144,21 +199,7 @@ fn main() {
         match input {
             1 => print_todos(),
             2 => add_todo(),
-            3 => {
-                if lista_todos.len() == 0 {
-                    println!("There is no todos to delete");
-                    continue;
-                }
-                let mut id = String::new();
-                io::stdin().read_line(&mut id).expect("Invalid number");
-                let id: i64 = id.trim().parse().expect("Invalid number");
-                if let Some(index) = lista_todos.iter().position(|todo| todo.id == id) {
-                    lista_todos.remove(index);
-                    println!("Todo with id {} was removed", id);
-                } else {
-                    println!("Todo with id {} was not found", id);
-                }
-            }
+            3 => delete_todo(),
             4 => println!("4"),
             5 => {
                 println!("Finished");
