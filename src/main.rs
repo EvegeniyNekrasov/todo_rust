@@ -282,23 +282,17 @@ fn update_todo() {
 }
 
 fn main() {
-    println!("Welcome to rust todo!");
-    println!("What you want todo:");
-
-    let mut is_running = true;
-
     loop {
-        if !is_running {
-            break;
-        }
-
         clear_console();
 
-        println!("1)    Show todos");
-        println!("2)    Add todo");
-        println!("3)    Delete todo");
-        println!("4)    Update todo");
-        println!("5)    Quit");
+        println!("Welcome to rust todo!");
+        println!("What you want todo:\n");
+
+        println!("1)\tShow todos");
+        println!("2)\tAdd todo");
+        println!("3)\tDelete todo");
+        println!("4)\tUpdate todo");
+        println!("5)\tQuit");
 
         let input = String::new();
         let input = get_from_user(input);
@@ -308,14 +302,8 @@ fn main() {
             2 => add_todo(),
             3 => delete_todo(),
             4 => update_todo(),
-            5 => {
-                println!("Finished");
-                is_running = false;
-            }
-            _ => {
-                print!("Unexpected value, insert number from 1 to 5");
-                continue;
-            }
+            5 => break,
+            _ => print!("Invalid option..."),
         }
 
         pause();
