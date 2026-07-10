@@ -1,7 +1,6 @@
-use csv::WriterBuilder;
+use csv::{Writer, WriterBuilder};
 use serde::Deserialize;
 use std::{
-    collections::linked_list,
     error::Error,
     fs::{File, OpenOptions},
     io::{self, Read, Seek, SeekFrom, Write},
@@ -14,6 +13,30 @@ struct Todo {
     id: i64,
     title: String,
     finished: bool,
+}
+
+fn save_todos(todos: &[Todo]) -> Result<(), Box<dyn Error>> {
+    let file: File = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(FILE_NAME)?;
+
+    let mut wtr: Writer<File> = WriterBuilder::new().has_headers(true).from_writer(file);
+
+    wtr.write_record(&["id", "title", "finished"])?;
+
+    for todo in todos {
+        wtr.write_record(&[
+            todo.id.to_string(),
+            todo.title.clone(),
+            todo.finished.to_string(),
+        ])?;
+    }
+
+    wtr.flush()?;
+
+    Ok(())
 }
 
 fn read_csv() -> Result<Vec<Todo>, Box<dyn Error>> {
@@ -110,9 +133,9 @@ fn print_todos() {
             lista_todos[i].id,
             lista_todos[i].title,
             if lista_todos[i].finished {
-                String::from("In process")
-            } else {
                 String::from("Finished")
+            } else {
+                String::from("In process")
             }
         )
     }
@@ -155,25 +178,92 @@ fn delete_todo() {
         return;
     }
 
-    let file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .create(true)
-        .open(FILE_NAME)
-        .expect("Could not open CSV");
+    match save_todos(&filtered_list) {
+        Ok(_) => println!("Todo delted"),
+        Err(e) => println!("Could not delete todo: {}", e),
+    }
+}
 
-    let mut wtr = WriterBuilder::new().has_headers(true).from_writer(file);
+fn update_todo() {
+    let mut todos_list = match read_csv() {
+        Ok(todos) => todos,
+        Err(e) => {
+            println!("Error reading CSV, {}", e);
+            return;
+        }
+    };
 
-    wtr.write_record(&["id", "title", "finished"])
-        .expect("Could not write heder");
-
-    for todo in filtered_list {
-        wtr.write_record(&[todo.id.to_string(), todo.title, todo.finished.to_string()])
-            .expect("Could no save write todo");
+    if todos_list.is_empty() {
+        println!("There are no todos to update");
+        return;
     }
 
-    wtr.flush().expect("Could not save CSV");
-    println!("Todo deleted");
+    println!("Insert ID to update:");
+
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).expect("Invalid id");
+
+    let id_to_update: i64 = match input.trim().parse() {
+        Ok(id) => id,
+        Err(_) => {
+            println!("Invalid ID");
+            return;
+        }
+    };
+
+    let todo_to_update = todos_list.iter_mut().find(|todo| todo.id == id_to_update);
+
+    let todo = match todo_to_update {
+        Some(todo) => todo,
+        None => {
+            println!("Todo with id {} not found", id_to_update);
+            return;
+        }
+    };
+
+    println!("Current title: {}", todo.title);
+    println!("Insert new title, or press Enter to keep current title:");
+
+    let mut new_title = String::new();
+    io::stdin()
+        .read_line(&mut new_title)
+        .expect("Invalid title");
+
+    let new_title = new_title.trim();
+
+    if !new_title.is_empty() {
+        todo.title = new_title.to_string();
+    }
+
+    println!("Current finished: {}", todo.finished);
+    println!("Insert new finished value: true / false, or press Enter to keep current value:");
+
+    let mut new_finished = String::new();
+    io::stdin()
+        .read_line(&mut new_finished)
+        .expect("Invalid finished value");
+
+    let new_finished = new_finished.trim().to_lowercase();
+
+    if !new_finished.is_empty() {
+        match new_finished.as_str() {
+            "true" | "t" | "1" | "yes" | "y" | "si" | "s" => {
+                todo.finished = true;
+            }
+            "false" | "f" | "0" | "no" | "n" => {
+                todo.finished = false;
+            }
+            _ => {
+                println!("Invalid finished value");
+                return;
+            }
+        }
+    }
+
+    match save_todos(&todos_list) {
+        Ok(_) => println!("Todo updated"),
+        Err(e) => println!("Could not update todo: {}", e),
+    }
 }
 
 fn main() {
@@ -200,7 +290,7 @@ fn main() {
             1 => print_todos(),
             2 => add_todo(),
             3 => delete_todo(),
-            4 => println!("4"),
+            4 => update_todo(),
             5 => {
                 println!("Finished");
                 is_running = false;
