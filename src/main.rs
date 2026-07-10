@@ -1,14 +1,28 @@
 use crossterm::{
     cursor::MoveTo,
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     execute,
     terminal::{Clear, ClearType},
 };
 use csv::{Writer, WriterBuilder};
 use serde::Deserialize;
 use std::{
+    borrow::Borrow,
     error::Error,
     fs::{File, OpenOptions},
     io::{self, Read, Seek, SeekFrom, Write, stdout},
+    vec,
+};
+
+use ratatui::style::Stylize;
+
+use ratatui::{
+    DefaultTerminal, Frame,
+    buffer::Buffer,
+    layout::Rect,
+    symbols::border,
+    text::{Line, Text},
+    widgets::{Block, Paragraph, Widget},
 };
 
 const FILE_NAME: &str = "./src/todos.csv";
@@ -281,31 +295,76 @@ fn update_todo() {
     }
 }
 
-fn main() {
-    loop {
-        clear_console();
+#[derive(Debug, Default)]
+pub struct App {
+    exit: bool,
+}
 
-        println!("Welcome to rust todo!");
-        println!("What you want todo:\n");
-
-        println!("1)\tShow todos");
-        println!("2)\tAdd todo");
-        println!("3)\tDelete todo");
-        println!("4)\tUpdate todo");
-        println!("5)\tQuit");
-
-        let input = String::new();
-        let input = get_from_user(input);
-
-        match input {
-            1 => print_todos(),
-            2 => add_todo(),
-            3 => delete_todo(),
-            4 => update_todo(),
-            5 => break,
-            _ => print!("Invalid option..."),
+impl App {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        while !self.exit {
+            terminal.draw(|frame| self.draw(frame))?;
         }
 
-        pause();
+        Ok(())
     }
+
+    fn draw(&self, frame: &mut Frame) {
+        frame.render_widget(self, frame.area());
+    }
+}
+
+impl Widget for &App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let title = Line::from(" Todo app ".bold());
+        let instructions = Line::from(vec![" Todo ".into(), " app ".blue().bold()]);
+
+        let block = Block::bordered()
+            .title(title.centered())
+            .title_bottom(instructions.centered())
+            .border_set(border::THICK);
+
+        let info_texts = Text::from(vec![
+            Line::from("1) List todos"),
+            Line::from("2) Add todo"),
+            Line::from("3) Delete todo"),
+            Line::from("4) Update todo"),
+            Line::from("5) Quit"),
+        ]);
+
+        Paragraph::new(info_texts)
+            .centered()
+            .block(block)
+            .render(area, buf);
+    }
+}
+
+fn main() -> io::Result<()> {
+    ratatui::run(|terminal| App::default().run(terminal))
+    // loop {
+    //     clear_console();
+
+    //     println!("Welcome to rust todo!");
+    //     println!("What you want todo:\n");
+
+    //     println!("1)\tShow todos");
+    //     println!("2)\tAdd todo");
+    //     println!("3)\tDelete todo");
+    //     println!("4)\tUpdate todo");
+    //     println!("5)\tQuit");
+
+    //     let input = String::new();
+    //     let input = get_from_user(input);
+
+    //     match input {
+    //         1 => print_todos(),
+    //         2 => add_todo(),
+    //         3 => delete_todo(),
+    //         4 => update_todo(),
+    //         5 => break,
+    //         _ => print!("Invalid option..."),
+    //     }
+
+    //     pause();
+    // }
 }
