@@ -1,12 +1,27 @@
+use crossterm::{
+    cursor::MoveTo,
+    execute,
+    terminal::{Clear, ClearType},
+};
 use csv::{Writer, WriterBuilder};
 use serde::Deserialize;
 use std::{
     error::Error,
     fs::{File, OpenOptions},
-    io::{self, Read, Seek, SeekFrom, Write},
+    io::{self, Read, Seek, SeekFrom, Write, stdout},
 };
 
 const FILE_NAME: &str = "./src/todos.csv";
+
+fn clear_console() {
+    execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0)).unwrap();
+}
+
+fn pause() {
+    println!("\nPress ENTER to continue...");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
+}
 
 #[derive(Debug, Clone, Deserialize)]
 struct Todo {
@@ -277,6 +292,8 @@ fn main() {
             break;
         }
 
+        clear_console();
+
         println!("1)    Show todos");
         println!("2)    Add todo");
         println!("3)    Delete todo");
@@ -300,5 +317,7 @@ fn main() {
                 continue;
             }
         }
+
+        pause();
     }
 }
