@@ -1429,6 +1429,7 @@ dependencies = [
  "csv",
  "ratatui",
  "serde",
+ "unicode-width",
 ]
 
 [[package]]
